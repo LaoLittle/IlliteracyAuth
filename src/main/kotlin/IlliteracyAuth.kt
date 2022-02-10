@@ -8,6 +8,7 @@ import net.mamoe.mirai.Bot
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.register
 import net.mamoe.mirai.console.plugin.jvm.JvmPluginDescription
 import net.mamoe.mirai.console.plugin.jvm.KotlinPlugin
+import net.mamoe.mirai.event.EventPriority
 import net.mamoe.mirai.event.broadcast
 import net.mamoe.mirai.event.events.GroupMessageEvent
 import net.mamoe.mirai.event.events.MemberJoinEvent
@@ -34,10 +35,12 @@ object IlliteracyAuth : KotlinPlugin(
 
         logger.info { "Plugin loaded" }
 
-        globalEventChannel().subscribeAlways<MemberJoinEvent> {
+        globalEventChannel().subscribeAlways<MemberJoinEvent>(
+            priority = EventPriority.HIGHEST
+        ) {
             if (groupId !in AuthPluginData.enabledGroups) return@subscribeAlways
             if (Bot.instances.all { it.id != member.id }) {
-                val question = AuthText.texts.random().split(Regex("[。.]")).random()
+                val question = AuthText.texts.random().split(Regex("[。.；;]")).filter { it.isNotBlank() }.random()
                 val answers = question.split(usefulRegex)
                 group.sendMessage(At(member) + PlainText("欢迎来到${group.name}，为保障良好的聊天环境，请在180秒内为以下句子断句。"))
                 delay(1000)
