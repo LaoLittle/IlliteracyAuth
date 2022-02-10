@@ -18,6 +18,7 @@ import net.mamoe.mirai.event.subscribeGroupMessages
 import net.mamoe.mirai.message.data.At
 import net.mamoe.mirai.message.data.PlainText
 import net.mamoe.mirai.utils.info
+import kotlin.random.Random
 
 object IlliteracyAuth : KotlinPlugin(
     JvmPluginDescription(
@@ -40,7 +41,9 @@ object IlliteracyAuth : KotlinPlugin(
         ) {
             if (groupId !in AuthPluginData.enabledGroups) return@subscribeAlways
             if (Bot.instances.all { it.id != member.id }) {
-                val question = AuthText.texts.random().split(Regex("[。.；;]")).filter { it.isNotBlank() }.random()
+                val question =
+                    AuthText.texts.random().split(Regex("[。.${if (Random.nextInt(100) > 50) "；;" else ""}？?”\"]+"))
+                        .filter { it.isNotBlank() }.random()
                 val answers = question.split(usefulRegex)
                 group.sendMessage(At(member) + PlainText("欢迎来到${group.name}，为保障良好的聊天环境，请在180秒内为以下句子断句。"))
                 delay(1000)
@@ -87,8 +90,7 @@ object IlliteracyAuth : KotlinPlugin(
                         group.sendMessage("您已通过验证! ")
                         QuitEvent.broadcast()
                         break
-                    }
-                    else {
+                    } else {
                         if (times >= 5) {
                             group.sendMessage("您的分数为${foo * 100}, 未通过验证, 请重新加群")
                             member.kick("未通过验证")

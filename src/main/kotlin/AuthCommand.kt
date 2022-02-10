@@ -10,7 +10,7 @@ object AuthCommand : CompositeCommand(
 ) {
 
     @SubCommand("add")
-    suspend fun CommandSender.add(group: Long? = getGroupOrNull()?.id){
+    suspend fun CommandSender.add(group: Long? = getGroupOrNull()?.id) {
         when (group?.let { AuthPluginData.enabledGroups.add(it) }) {
             true -> sendMessage("添加成功")
             false -> sendMessage("目标群已开启验证, 无需重复开启")
@@ -19,7 +19,7 @@ object AuthCommand : CompositeCommand(
     }
 
     @SubCommand("remove", "rm")
-    suspend fun CommandSender.remove(group: Long? = getGroupOrNull()?.id){
+    suspend fun CommandSender.remove(group: Long? = getGroupOrNull()?.id) {
         when (group?.let { AuthPluginData.enabledGroups.remove(it) }) {
             true -> sendMessage("删除成功")
             false -> sendMessage("目标群未开启验证")
