@@ -120,7 +120,7 @@ object IlliteracyAuth : KotlinPlugin(
                     times++
                     val foo = acc / (answers.size - 1)
 
-                    val result = String.format("%.2f", if (foo < 1) foo * 100 else 100.0)
+                    val result = String.format("%.2f", if (foo > 1) 100.0 else if (foo > 0) foo * 100 else 0.0)
                     if (foo > 0.8) {
                         group.sendMessage("您的分数为${result}, 已通过验证! ")
                         QuitEvent(member).broadcast()
