@@ -1,3 +1,5 @@
 package org.laolittle.plugin
 
-internal val usefulPattern = "[，,。.！!/\\s]+".toPattern()
+internal const val stopSymbol = """，,。.！!？?：:“”"/\s"""
+
+internal val usefulPattern = "[$stopSymbol]+".toPattern()
