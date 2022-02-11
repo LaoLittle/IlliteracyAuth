@@ -62,14 +62,15 @@ object IlliteracyAuth : KotlinPlugin(
                 return@subscribeAlways
             }
             if (Bot.instances.all { it.id != member.id }) {
+                val bar = Regex("""[。.${if (Random.nextInt(100) > 49) "；;" else ""}！!？?“”"]+""")
                 val question =
                     AuthText.texts.random()
-                        .split(Regex("""[。.${if (Random.nextInt(100) > 49) "；;" else ""}！!？?“”"]+"""))
-                        .filter { it.isNotBlank() }.random()
-                val answers = question.split(usefulPattern)
+                        .split(bar)
+                        .filter { it.contains(usefulRegex) }.random()
+                val answers = question.split(usefulRegex)
                 group.sendMessage(At(member) + PlainText("欢迎来到${group.name}，为保障良好的聊天环境，请在180秒内为以下句子断句。"))
                 delay(1000)
-                group.sendMessage(question.replace(usefulPattern.toRegex(), ""))
+                group.sendMessage(question.replace(usefulRegex, ""))
 
                 val messageChannel = Channel<MessageChain>()
                 val messageListener =
@@ -108,33 +109,35 @@ object IlliteracyAuth : KotlinPlugin(
                     val lastIndex = answers.size - 1
 
                     for (index in 0..lastIndex) {
-                        val regex = (if (index < lastIndex) "${answers[index]}$usefulPattern"
-                        else "$usefulPattern${answers[index]}").toRegex()
-                        if (auth.contains(regex)) {
-                            auth = auth.replace(regex, "")
-                            acc++
-                        } else if (index == lastIndex && auth.replace(
-                                Regex("$auth$usefulPattern"),
-                                ""
-                            ) == answers[index]
-                        ) {
-                            auth = ""
-                            acc++
-                        }
+                        val regex = (if (index < lastIndex) "${answers[index]}$usefulRegex"
+                        else "$usefulRegex${answers[index]}").toRegex()
+                        kotlin.runCatching {
+                            if (auth.contains(regex)) {
+                                auth = auth.replace(regex, "")
+                                acc++
+                            } else if (index == lastIndex && auth.substring(0, auth.indexOf(answers[index].last()) + 1) == answers[index]
+                            ) {
+                                auth = ""
+                                acc++
+                            }
+                            Unit
+                        }.onFailure { acc -= 0.8 }
                     }
                     var num = 0
+
                     auth.forEach {
-                        if (it in stopSymbol) {
-                            if (num >= 1) acc -= 0.4
+                        if (usefulRegex.containsMatchIn(it.toString())) {
                             num++
+                            if (num >= if (answers.size <= 4) answers.size - 2 else 3) acc -= 0.4
                         }
                     }
 
                     times++
-                    val foo = acc / (answers.size + 1)
+                    val foo = acc / (answers.size - 1)
 
+                    val result = String.format("%.2f", if (foo < 1) foo * 100 else 100.0)
                     if (foo > 0.8) {
-                        group.sendMessage("您已通过验证! ")
+                        group.sendMessage("您的分数为${result}, 已通过验证! ")
                         run {
                             if (!group.enable()) return@subscribeAlways
                             delay(1000)
@@ -152,7 +155,6 @@ object IlliteracyAuth : KotlinPlugin(
                         QuitEvent(member).broadcast()
                         break
                     } else {
-                        val result = String.format("%.2f", foo * 100)
                         if (times >= 5) {
                             group.sendMessage(PlainText("您的分数为$result, 未通过验证, 请重新加群") + msg.quote())
                             member.kick("未通过验证")

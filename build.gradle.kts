@@ -13,7 +13,3 @@ repositories {
     maven("https://maven.aliyun.com/repository/central")
     mavenCentral()
 }
-
-dependencies {
-    compileOnly(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
-}
