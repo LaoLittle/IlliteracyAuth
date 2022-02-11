@@ -47,18 +47,19 @@ object IlliteracyAuth : KotlinPlugin(
             }
             if (Bot.instances.all { it.id != member.id }) {
                 val question =
-                    AuthText.texts.random().split(Regex("[。.${if (Random.nextInt(100) > 50) "；;" else ""}！!？?”\"]+"))
+                    AuthText.texts.random()
+                        .split(Regex("""[。.${if (Random.nextInt(100) > 49) "；;" else ""}！!？?“”"]+"""))
                         .filter { it.isNotBlank() }.random()
                 val answers = question.split(usefulPattern)
                 group.sendMessage(At(member) + PlainText("欢迎来到${group.name}，为保障良好的聊天环境，请在180秒内为以下句子断句。"))
                 delay(1000)
                 group.sendMessage(question.replace(usefulPattern.toRegex(), ""))
 
-                val codesChannel = Channel<MessageChain>()
+                val messageChannel = Channel<MessageChain>()
                 val messageListener =
                     globalEventChannel().filterIsInstance<GroupMessageEvent>().filter { it.sender.id == member.id }
                         .subscribeGroupMessages {
-                            always { codesChannel.send(message) }
+                            always { messageChannel.send(message) }
                         }
 
                 val leaveListener =
@@ -80,33 +81,42 @@ object IlliteracyAuth : KotlinPlugin(
                         messageListener.complete()
                         leaveListener.complete()
                         timeout.cancel()
-                        codesChannel.close()
+                        messageChannel.close()
                     }
                 }
 
                 var times = 0
-                for (msg in codesChannel) {
+                for (msg in messageChannel) {
                     var acc = 0.0
                     var auth = msg.content
                     val lastIndex = answers.size - 1
 
                     for (index in 0..lastIndex) {
-                        if (index < lastIndex) {
-                            val regex = "${answers[index]}$usefulPattern${answers[index + 1]}".toRegex()
-                            if (auth.contains(regex)) {
-                                auth = auth.replace(regex, "")
-                                acc++
-                            }
-                        } else {
-                            val regex = "$usefulPattern${answers[index]}".toRegex()
-                            if (auth.contains(regex)) {
-                                auth = auth.replace(regex, "")
-                                acc++
-                            }
+                        val regex = (if (index < lastIndex) "${answers[index]}$usefulPattern"
+                        else "$usefulPattern${answers[index]}").toRegex()
+                        if (auth.contains(regex)) {
+                            auth = auth.replace(regex, "")
+                            acc++
+                        } else if (index == lastIndex && auth.replace(
+                                Regex("$auth$usefulPattern"),
+                                ""
+                            ) == answers[index]
+                        ) {
+                            auth = ""
+                            acc++
                         }
                     }
+                    var num = 0
+                    auth.forEach {
+                        if (it in stopSymbol) {
+                            if (num >= 1) acc -= 0.4
+                            num++
+                        }
+                    }
+
                     times++
-                    val foo = acc / answers.size
+                    val foo = acc / (answers.size + 1)
+
                     if (foo > 0.8) {
                         group.sendMessage("您已通过验证! ")
 
