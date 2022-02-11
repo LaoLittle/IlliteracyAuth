@@ -1,3 +1,3 @@
 package org.laolittle.plugin
 
-internal val usefulRegex = Regex("[，,。.！!/\\s]+")
+internal val usefulPattern = "[，,。.！!/\\s]+".toPattern()
