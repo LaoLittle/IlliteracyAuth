@@ -7,6 +7,7 @@ import net.mamoe.mirai.Bot
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.register
 import net.mamoe.mirai.console.plugin.jvm.JvmPluginDescription
 import net.mamoe.mirai.console.plugin.jvm.KotlinPlugin
+import net.mamoe.mirai.contact.Contact.Companion.sendImage
 import net.mamoe.mirai.event.EventPriority
 import net.mamoe.mirai.event.broadcast
 import net.mamoe.mirai.event.events.GroupMessageEvent
@@ -19,7 +20,11 @@ import net.mamoe.mirai.message.data.MessageChain
 import net.mamoe.mirai.message.data.MessageSource.Key.quote
 import net.mamoe.mirai.message.data.PlainText
 import net.mamoe.mirai.message.data.content
+import net.mamoe.mirai.utils.error
 import net.mamoe.mirai.utils.info
+import org.laolittle.plugin.joinorquit.AutoConfig
+import org.laolittle.plugin.joinorquit.GroupList.enable
+import org.laolittle.plugin.model.PatPatTool
 import kotlin.random.Random
 
 object IlliteracyAuth : KotlinPlugin(
@@ -42,7 +47,18 @@ object IlliteracyAuth : KotlinPlugin(
             priority = EventPriority.LOW
         ) {
             if (groupId !in AuthPluginData.enabledGroups) {
-
+                if (!group.enable()) return@subscribeAlways
+                delay(1000)
+                group.sendMessage(AutoConfig.newMemberJoinMessage.random())
+                delay(2547)
+                if (AutoConfig.newMemberJoinPat) {
+                    runCatching {
+                        PatPatTool.getPat(member, 60)
+                        group.sendImage(PatPat.dataFolder.resolve("tmp").resolve("${member.id}_pat.gif"))
+                    }.onFailure {
+                        if (it is ClassNotFoundException) logger.error { "需要前置插件：PatPat, 请前往下载https://mirai.mamoe.net/topic/740" }
+                    }
+                }
                 return@subscribeAlways
             }
             if (Bot.instances.all { it.id != member.id }) {
@@ -109,7 +125,20 @@ object IlliteracyAuth : KotlinPlugin(
                     val foo = acc / answers.size
                     if (foo > 0.8) {
                         group.sendMessage("您已通过验证! ")
-
+                        run {
+                            if (!group.enable()) return@subscribeAlways
+                            delay(1000)
+                            group.sendMessage(AutoConfig.newMemberJoinMessage.random())
+                            delay(2547)
+                            if (AutoConfig.newMemberJoinPat) {
+                                runCatching {
+                                    PatPatTool.getPat(member, 60)
+                                    group.sendImage(PatPat.dataFolder.resolve("tmp").resolve("${member.id}_pat.gif"))
+                                }.onFailure {
+                                    if (it is ClassNotFoundException) logger.error { "需要前置插件：PatPat, 请前往下载https://mirai.mamoe.net/topic/740" }
+                                }
+                            }
+                        }
                         QuitEvent(member).broadcast()
                         break
                     } else {
