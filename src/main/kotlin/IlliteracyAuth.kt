@@ -108,8 +108,9 @@ object IlliteracyAuth : KotlinPlugin(
                         }.onFailure { acc -= 0.8 }
                     }
                     var num = 0
+
                     auth.forEach {
-                        if (it in stopSymbol) {
+                        if (usefulRegex.containsMatchIn(it.toString())) {
                             num++
                             if (num >= if (answers.size <= 4) answers.size - 2 else 3) acc -= 0.4
                         }
@@ -118,10 +119,9 @@ object IlliteracyAuth : KotlinPlugin(
                     times++
                     val foo = acc / (answers.size - 1)
 
-                    val result = String.format("%.2f", foo * 100)
+                    val result = String.format("%.2f", if (foo < 1) foo * 100 else 100.0)
                     if (foo > 0.8) {
                         group.sendMessage("您的分数为${result}, 已通过验证! ")
-
                         QuitEvent(member).broadcast()
                         break
                     } else {
