@@ -1,6 +1,5 @@
 package org.laolittle.plugin
 
-import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -37,12 +36,12 @@ object IlliteracyAuth : KotlinPlugin(
         logger.info { "Plugin loaded" }
 
         globalEventChannel().subscribeAlways<MemberJoinEvent>(
-            priority = EventPriority.HIGHEST
+            priority = EventPriority.HIGH
         ) {
             if (groupId !in AuthPluginData.enabledGroups) return@subscribeAlways
             if (Bot.instances.all { it.id != member.id }) {
                 val question =
-                    AuthText.texts.random().split(Regex("[。.${if (Random.nextInt(100) > 50) "；;" else ""}？?”\"]+"))
+                    AuthText.texts.random().split(Regex("[。.${if (Random.nextInt(100) > 50) "；;" else ""}！!？?”\"]+"))
                         .filter { it.isNotBlank() }.random()
                 val answers = question.split(usefulRegex)
                 group.sendMessage(At(member) + PlainText("欢迎来到${group.name}，为保障良好的聊天环境，请在180秒内为以下句子断句。"))
@@ -74,7 +73,7 @@ object IlliteracyAuth : KotlinPlugin(
                 globalEventChannel().subscribeAlways<QuitEvent> {
                     messageListener.complete()
                     leaveListener.complete()
-                    timeout.cancelAndJoin()
+                    timeout.cancel()
                     codesChannel.close()
                 }
 
