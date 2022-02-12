@@ -7,6 +7,7 @@ import net.mamoe.mirai.Bot
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.register
 import net.mamoe.mirai.console.plugin.jvm.JvmPluginDescription
 import net.mamoe.mirai.console.plugin.jvm.KotlinPlugin
+import net.mamoe.mirai.contact.PermissionDeniedException
 import net.mamoe.mirai.event.EventPriority
 import net.mamoe.mirai.event.broadcast
 import net.mamoe.mirai.event.events.GroupMessageEvent
@@ -19,6 +20,7 @@ import net.mamoe.mirai.message.data.MessageChain
 import net.mamoe.mirai.message.data.MessageSource.Key.quote
 import net.mamoe.mirai.message.data.PlainText
 import net.mamoe.mirai.message.data.content
+import net.mamoe.mirai.utils.error
 import net.mamoe.mirai.utils.info
 import kotlin.random.Random
 
@@ -45,9 +47,10 @@ object IlliteracyAuth : KotlinPlugin(
 
             if (Bot.instances.all { it.id != member.id }) {
                 val bar = Regex("""[。.${if (Random.nextInt(100) > 49) "；;" else ""}！!？?]+""")
+                val quotation = Regex("""[“”"]+""")
                 val question =
                     AuthText.texts.random()
-                        .replace(Regex("""[“”"]+"""), "")
+                        .replace(quotation, "")
                         .split(bar)
                         .filter { it.contains(usefulRegex) }.random()
                 val answers = question.split(usefulRegex)
@@ -78,9 +81,6 @@ object IlliteracyAuth : KotlinPlugin(
 
                 globalEventChannel().subscribeAlways<QuitEvent> Quit@{
                     if (this@Quit.member == this@subscribeAlways.member) {
-                        messageListener.complete()
-                        leaveListener.complete()
-                        timeout.cancel()
                         messageChannel.close()
                     }
                 }
@@ -88,7 +88,7 @@ object IlliteracyAuth : KotlinPlugin(
                 var times = 0
                 for (msg in messageChannel) {
                     var acc = 0.0
-                    var auth = msg.content
+                    var auth = msg.content.replace(quotation, "")
                     val lastIndex = answers.size - 1
 
                     for (index in 0..lastIndex) {
@@ -129,12 +129,23 @@ object IlliteracyAuth : KotlinPlugin(
                     } else {
                         if (times >= 5) {
                             group.sendMessage(PlainText("您的分数为$result, 未通过验证, 请重新加群") + msg.quote())
-                            member.kick("未通过验证")
+                            kotlin.runCatching {
+                                member.kick("未通过验证")
+                            }.onFailure { e ->
+                                if (e is PermissionDeniedException) logger.error { "$member 验证失败, 无法踢出, 原因: 权限不足" } else logger.error(
+                                    e
+                                )
+                            }
+
                             QuitEvent(member).broadcast()
                             break
                         } else group.sendMessage(At(member) + PlainText("您的分数为$result, 未通过验证, 还有${5 - times}次机会") + sentQuestion.quote())
                     }
                 }
+
+                messageListener.complete()
+                leaveListener.complete()
+                timeout.cancel()
             }
         }
     }
