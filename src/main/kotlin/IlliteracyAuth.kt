@@ -8,6 +8,7 @@ import net.mamoe.mirai.console.command.CommandManager.INSTANCE.register
 import net.mamoe.mirai.console.plugin.jvm.JvmPluginDescription
 import net.mamoe.mirai.console.plugin.jvm.KotlinPlugin
 import net.mamoe.mirai.contact.PermissionDeniedException
+import net.mamoe.mirai.contact.isOperator
 import net.mamoe.mirai.event.EventPriority
 import net.mamoe.mirai.event.broadcast
 import net.mamoe.mirai.event.events.GroupMessageEvent
@@ -28,7 +29,7 @@ object IlliteracyAuth : KotlinPlugin(
     JvmPluginDescription(
         id = "org.laolittle.plugin.IlliteracyAuth",
         name = "IlliteracyAuth",
-        version = "1.0.1",
+        version = "1.0.2",
     ) {
         author("LaoLittle")
     }
@@ -88,17 +89,20 @@ object IlliteracyAuth : KotlinPlugin(
                 var times = 0
                 for (msg in messageChannel) {
                     var acc = 0.0
-                    var auth = msg.content.replace(quotation, "")
+                    var auth = msg.content.replace(quotation, "").trim()
                     val lastIndex = answers.size - 1
 
                     for (index in 0..lastIndex) {
-                        val regex = (if (index < lastIndex) "${answers[index]}$usefulRegex"
-                        else "$usefulRegex${answers[index]}").toRegex()
-                        kotlin.runCatching {
-                            if (auth.contains(regex)) {
-                                auth = auth.replace(regex, "")
-                                acc++
-                            } else if (index == lastIndex && auth.substring(
+                        val regex =
+                            (if (index < lastIndex) "${answers[index].last()}$usefulRegex${answers[index + 1].first()}"
+                            else "$usefulRegex${answers[index].first()}").toRegex()
+                        val authFoo = auth
+                        auth = authFoo.replace(regex, "")
+                        if (auth != authFoo) acc++
+
+                        /*kotlin.runCatching {
+
+                              else if (index == lastIndex && auth.substring(
                                     0,
                                     auth.indexOf(answers[index].last()) + 1
                                 ) == answers[index]
@@ -106,13 +110,12 @@ object IlliteracyAuth : KotlinPlugin(
                                 auth = ""
                                 acc++
                             }
-                            Unit
-                        }.onFailure { acc -= 0.8 }
+                        }.onFailure { acc -= 0.8 }*/
                     }
                     var num = 0
 
                     auth.forEach {
-                        if (usefulRegex.containsMatchIn(it.toString())) {
+                        if (usefulRegex in it.toString()) {
                             num++
                             if (num >= if (answers.size <= 4) answers.size - 2 else 3) acc -= 0.4
                         }
@@ -132,11 +135,9 @@ object IlliteracyAuth : KotlinPlugin(
                             kotlin.runCatching {
                                 member.kick("未通过验证")
                             }.onFailure { e ->
-                                if (e is PermissionDeniedException) logger.error { "$member 验证失败, 无法踢出, 原因: 权限不足" } else logger.error(
-                                    e
-                                )
+                                if (e is PermissionDeniedException) logger.error { "$member 验证失败, 无法踢出, 原因: 权限不足" }
+                                else logger.error(e)
                             }
-
                             QuitEvent(member).broadcast()
                             break
                         } else group.sendMessage(At(member) + PlainText("您的分数为$result, 未通过验证, 还有${5 - times}次机会") + sentQuestion.quote())
@@ -146,6 +147,18 @@ object IlliteracyAuth : KotlinPlugin(
                 messageListener.complete()
                 leaveListener.complete()
                 timeout.cancel()
+            }
+        }
+
+        globalEventChannel().subscribeGroupMessages {
+            case("pass", true) {
+                if (sender.isOperator()) {
+                    subject.sendMessage("验证取消")
+
+                    subject.members.forEach {
+                        QuitEvent(it).broadcast()
+                    }
+                }
             }
         }
     }
