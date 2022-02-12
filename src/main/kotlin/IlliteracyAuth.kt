@@ -44,15 +44,16 @@ object IlliteracyAuth : KotlinPlugin(
             if (groupId !in AuthPluginData.enabledGroups) return@subscribeAlways
 
             if (Bot.instances.all { it.id != member.id }) {
-                val bar = Regex("""[。.${if (Random.nextInt(100) > 49) "；;" else ""}！!？?“”"]+""")
+                val bar = Regex("""[。.${if (Random.nextInt(100) > 49) "；;" else ""}！!？?]+""")
                 val question =
                     AuthText.texts.random()
+                        .replace(Regex("""[“”"]+"""), "")
                         .split(bar)
                         .filter { it.contains(usefulRegex) }.random()
                 val answers = question.split(usefulRegex)
                 group.sendMessage(At(member) + PlainText("欢迎来到${group.name}，为保障良好的聊天环境，请在180秒内为以下句子断句。"))
                 delay(1000)
-                group.sendMessage(question.replace(usefulRegex, ""))
+                val sentQuestion = group.sendMessage(question.replace(usefulRegex, ""))
 
                 val messageChannel = Channel<MessageChain>()
                 val messageListener =
@@ -131,7 +132,7 @@ object IlliteracyAuth : KotlinPlugin(
                             member.kick("未通过验证")
                             QuitEvent(member).broadcast()
                             break
-                        } else group.sendMessage(PlainText("您的分数为$result, 未通过验证, 还有${5 - times}次机会") + msg.quote())
+                        } else group.sendMessage(At(member) + PlainText("您的分数为$result, 未通过验证, 还有${5 - times}次机会") + sentQuestion.quote())
                     }
                 }
             }
